@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Order App</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white shadow">
+    <div class="max-w-7xl mx-auto py-4 px-6">
+      <h1 class="text-2xl font-bold text-gray-800">🍔 Order App</h1>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 overflow-auto p-6 max-w-7xl mx-auto">
+    <div id="root"></div>
+  </main>
+
+  <!-- React + html2canvas -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <script>
+    const { useState, useRef } = React;
+
+    function OrderApp() {
+      const defaultItems = [
+        { id: 1, name: "Cream jehi Banas" },
+        { id: 2, name: "Bis Bajiyaa" },
+        { id: 3, name: "Bis Cutlets" },
+        { id: 4, name: "Foni Folhi" },
+        { id: 5, name: "Rose Paan" },
+        { id: 6, name: "Boiled Egg" },
+        { id: 7, name: "Dhon Kajuru" },
+        { id: 8, name: "Masroshi" },
+        { id: 9, name: "Gulha" }
+      ];
+
+      const [items, setItems] = useState(defaultItems);
+      const [people, setPeople] = useState([]);
+      const [newItemName, setNewItemName] = useState("");
+      const [showPreview, setShowPreview] = useState(false);
+      const orderRef = useRef(null);
+
+      const addPerson = () =>
+        setPeople([...people, { name: `Person ${people.length + 1}`, orders: [] }]);
+      const renamePerson = (i, name) => {
+        const copy = [...people]; copy[i].name = name; setPeople(copy);
+      };
+      const addItem  = (i, id) => {
+        const copy = [...people]; copy[i].orders.push(id); setPeople(copy);
+      };
+      const resetOrder = i => {
+        const copy = [...people]; copy[i].orders = []; setPeople(copy);
+      };
+      const total = id => people.reduce((sum,p) =>
+        sum + p.orders.filter(x=>x===id).length, 0
+      );
+
+      const addNewItem = () => {
+        if (!newItemName.trim()) return;
+        setItems([...items, { id: Date.now(), name: newItemName }]);
+        setNewItemName("");
+      };
+      const deleteItem = id => {
+        setItems(items.filter(x=>x.id!==id));
+        setPeople(people.map(p=>({
+          ...p,
+          orders: p.orders.filter(x=>x!==id)
+        })));
+      };
+      const saveAsImage = () => {
+        if (!orderRef.current) return;
+        html2canvas(orderRef.current).then(canvas => {
+          const link = document.createElement('a');
+          link.download = 'order-summary.png';
+          link.href = canvas.toDataURL();
+          link.click();
+        });
+      };
+
+      return (
+        React.createElement('div', { className: 'space-y-6' },
+
+          // Add Item
+          React.createElement('div', { className: 'flex space-x-2' },
+            React.createElement('input', {
+              className: 'flex-1 border rounded px-3 py-2',
+              placeholder: 'New item name…',
+              value: newItemName,
+              onChange: e => setNewItemName(e.target.value)
+            }),
+            React.createElement('button', {
+              className: 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700',
+              onClick: addNewItem
+            }, '➕ Add')
+          ),
+
+          // Items Grid
+          React.createElement('div', {
+            className: 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
+          },
+            items.map(item =>
+              React.createElement('div', {
+                key: item.id,
+                className: 'bg-white rounded-lg shadow p-4 flex justify-between items-center'
+              },
+                React.createElement('span', { className: 'font-medium' },
+                  `${item.name} `,
+                  React.createElement('span', { className: 'text-sm text-gray-500' },
+                    `(${total(item.id)})`
+                  )
+                ),
+                React.createElement('button', {
+                  className: 'text-red-500 hover:text-red-600',
+                  onClick: () => deleteItem(item.id)
+                }, '🗑️')
+              )
+            )
+          ),
+
+          // Add Person Button
+          React.createElement('button', {
+            className: 'w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700',
+            onClick: addPerson
+          }, '👤 Add Person'),
+
+          // People Cards
+          React.createElement('div', { className: 'space-y-4' },
+            people.map((p,i) =>
+              React.createElement('div', {
+                key: i,
+                className: 'bg-white rounded-lg shadow p-4 space-y-2'
+              },
+                React.createElement('input', {
+                  className: 'w-full border rounded px-2 py-1',
+                  value: p.name,
+                  onChange: e => renamePerson(i,e.target.value)
+                }),
+                React.createElement('div', {
+                  className: 'flex flex-wrap gap-2'
+                },
+                  items.map(it =>
+                    React.createElement('button', {
+                      key: it.id,
+                      className: 'border rounded px-3 py-1 text-sm hover:bg-gray-100',
+                      onClick: () => addItem(i,it.id)
+                    }, it.name)
+                  )
+                ),
+                React.createElement('div', { className: 'text-sm text-gray-600' },
+                  'Orders: ' + p.orders.map(id=>items.find(x=>x.id===id)?.name).join(', ')
+                ),
+                React.createElement('button', {
+                  className: 'text-gray-500 text-sm hover:text-gray-700',
+                  onClick: () => resetOrder(i)
+                }, '🔄 Reset')
+              )
+            )
+          ),
+
+          // Preview & Save Buttons
+          people.length > 0 && React.createElement('div', {
+            className: 'flex space-x-2 justify-center'
+          },
+            React.createElement('button', {
+              className: 'bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600',
+              onClick: () => setShowPreview(true)
+            }, '👀 Preview'),
+            React.createElement('button', {
+              className: 'bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700',
+              onClick: saveAsImage
+            }, '💾 Save Image')
+          ),
+
+          // Preview Overlay
+          showPreview && React.createElement('div', {
+            className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4'
+          },
+            React.createElement('div', {
+              ref: orderRef,
+              className: 'bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-full overflow-auto p-6'
+            },
+              React.createElement('button', {
+                className: 'absolute top-4 right-4 text-gray-600 hover:text-gray-800',
+                onClick: () => setShowPreview(false)
+              }, '✖️'),
+              React.createElement('h2', { className: 'text-xl font-bold mb-4' },
+                '🧾 Order Summary'
+              ),
+              items.filter(it => total(it.id)>0).map(it =>
+                React.createElement('div', { key: it.id, className: 'mb-2' },
+                  `${it.name}: ${total(it.id)}`
+                )
+              ),
+              React.createElement('hr', { className: 'my-4' }),
+              people.map((p,i) =>
+                React.createElement('div', { key: i, className: 'mb-2' },
+                  React.createElement('b', null, p.name + ': '),
+                  p.orders.map(id=>items.find(x=>x.id===id)?.name).join(', ')
+                )
+              )
+            )
+          )
+        )
+      );
+    }
+
+    ReactDOM.render(
+      React.createElement(OrderApp),
+      document.getElementById('root')
+    );
+  </script>
+</body>
+</html>
